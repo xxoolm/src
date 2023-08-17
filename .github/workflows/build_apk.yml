@@ -14,7 +14,7 @@ on:
 jobs:
   build:
     # The type of runner that the job will run on
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
 
     strategy:
       fail-fast: false
@@ -42,8 +42,8 @@ jobs:
           sudo swapoff -av
           sudo rm -f /swapfile
 
-      - name: Reclaiming disk space on / by removing .NET framework
-        run: sudo rm -rf /usr/share/dotnet
+      - name: Reclaiming disk space on / by removing .NET framework and unused dependencies
+        run: sudo rm -rf /usr/share/dotnet /imagegeneration
 
       - name: Checking-out source-code in $GITHUB_WORKSPACE
         uses: actions/checkout@v2
@@ -87,10 +87,7 @@ jobs:
         run: sudo apt-get update
 
       - name: Installing Python and OpenJDK
-        run: sudo apt-get install -y python openjdk-8-jdk-headless libncurses5 ccache
-
-      - name: Setting-up Java 8 as default Java provider
-        run: sudo update-java-alternatives --set java-1.8.0-openjdk-amd64
+        run: sudo apt-get install -y python openjdk-8-jdk-headless libncurses5 ccache ninja-build
 
       - name: Installing system dependencies
         run: |
@@ -210,14 +207,47 @@ jobs:
       - name: Compiling source-code (base)
         run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} base
 
-      - name: Compiling source-code (chrome_java)
-        run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} chrome_java
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
 
+      - name: Compiling source-code (content/public/common)
+        run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} content/public/common
+
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
+
+      - name: Compiling source-code (content/public/browser)
+        run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} content/public/browser
+
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
+
+      - name: Compiling source-code (components/guest_view/common)
+        run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} components/guest_view/common
+
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
+      
       - name: Compiling source-code (components/guest_view/renderer)
         run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} components/guest_view/renderer
 
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
+
       - name: Compiling source-code (chrome/gpu)
         run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} chrome/gpu
+
+      - name: Uploading binary objects to cache
+        if: ${{ github.repository_owner == 'kiwibrowser' }}
+        run: rclone copy --fast-list --transfers=32 $HOME/cache/ sync:kiwibrowser-ccache-${{ matrix.platform }}/
+
+      - name: Compiling source-code (chrome_java)
+        run: ninja -C ./secondary_disk/out/android_${{ matrix.platform }} chrome_java
 
       - name: Uploading binary objects to cache
         if: ${{ github.repository_owner == 'kiwibrowser' }}
